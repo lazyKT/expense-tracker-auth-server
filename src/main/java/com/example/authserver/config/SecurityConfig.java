@@ -12,6 +12,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -102,7 +103,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-
+        // TODO! replace it with the proper encoder
         return NoOpPasswordEncoder.getInstance();
     }
 
@@ -118,7 +119,9 @@ public class SecurityConfig {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         KeyPair keyPair = generator.generateKeyPair();
+        // public expose: to validate the token
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        // private: to sign the token
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
         RSAKey key = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
@@ -133,7 +136,17 @@ public class SecurityConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> oAuth2TokenCustomizer() {
         return context -> {
+            // scopes are for client
+            // authorities are for users
             context.getClaims().claim("test", "test");
+            var authorities = context.getPrincipal().getAuthorities(); // Granted Authority
+            context.getClaims().claim(
+            "authorities",
+                authorities.stream().map(
+                    // same as auth -> auth.getAuthority
+                    GrantedAuthority::getAuthority
+                ).toList()
+            );
         };
     }
 }
